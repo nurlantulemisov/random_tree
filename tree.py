@@ -126,7 +126,7 @@ class Tree:
             item_values = [self.info_gain(data, feature, target_attribute_name) for feature in
                            features]  # Return the information gain values for the features in the dataset
             best_feature_index = np.argmax(item_values)
-            best_feature = features[best_feature_index - 1]
+            best_feature = features[best_feature_index]
 
             # Create the tree structure.
             # The root gets the name of the feature (best_feature) with the maximum information
@@ -183,5 +183,12 @@ class Tree:
 if __name__ == '__main__':
     tree_class = Tree()
     data = tree_class.dataset
-    tree = tree_class.ID3(data=data, originaldata=data, features=list(data.columns.values), target_attribute_name='y')
+    tree = tree_class.ID3(data=data, originaldata=data, features=data.columns[:-1], target_attribute_name='y')
     print(tree)
+    # max_ig = []
+    # for col in list(data.columns.values):
+    #     if col != 'y':
+    #         info_gain = tree_class.info_gain(data, col, 'y')
+    #         max_ig = np.append(max_ig, info_gain)
+    #         print(str(info_gain) + ' info gain for ' + col)
+    # print('%s max value' % (max_ig.max()))
