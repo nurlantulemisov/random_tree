@@ -145,37 +145,12 @@ class Tree:
                 # Split the dataset along the value of the feature with
                 # the largest information gain and therwith create sub_datasets
 
-                sub_data_min = data.where(data[best_feature] <= value).dropna()
-                sub_data_max = data.where(data[best_feature] > value).dropna()
+                sub_data = data.where(data[best_feature] == value).dropna()
 
-                min_info_gain = self.info_gain(sub_data_min, best_feature, target_attribute_name)
-                max_info_gain = self.info_gain(sub_data_max, best_feature, target_attribute_name)
+                subtree = self.ID3(sub_data, data, features, target_attribute_name, parent_node_class)
 
-                better_predict[value] = {'min': ''}
-                better_predict[value] = {'max': ''}
-
-                better_predict[value]['min'] = min_info_gain
-                better_predict[value]['max'] = max_info_gain
-
-            q_j_t = self.find_better_predict(better_predict)
-
-            for key, val in q_j_t.items():
-                print(key)
-                quit()
-                # sub_data_min = data.where(data[best_feature] <= key).dropna()
-                # sub_data_max = data.where(data[best_feature] > key).dropna()
-                #
-                # # Call the ID3 algorithm for each of those sub_datasets with
-                # # the new parameters --> Here the recursion comes in!
-                # subtree_left = self.ID3(sub_data_min, data, features, target_attribute_name, parent_node_class)
-                # #subtree_right = self.ID3(sub_data_max, data, features, target_attribute_name, parent_node_class)
-                #
-                # # Add the sub tree, grown from the sub_dataset to the tree under the root node
-                # #tree[best_feature][key] = {'left': ''}
-                # #tree[best_feature][value] = {'right': ''}
-                #
-                # tree[best_feature][key] = subtree_left
-                # #tree[best_feature][value]['right'] = subtree_right
+                # Add the sub tree, grown from the sub_dataset to the tree under the root node
+                tree[best_feature][value] = subtree
 
             return tree
 
