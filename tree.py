@@ -1,11 +1,13 @@
 import numpy as np
-from pandas import read_csv as read
-import json
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+
 
 class Tree:
     def __init__(self):
         path = "bank.csv"
-        dataset = read(path, delimiter=";")
+        dataset = pd.read_csv(path, delimiter=";")
         # %%
         dataset['y'] = dataset['y'].map({'no': 0, 'yes': 1})
         dataset['job'] = dataset['job'].map({'admin.': 0, 'unknown': 1,
@@ -101,7 +103,10 @@ class Tree:
 
         # If all target_values have the same value, return this value
         if len(np.unique(data[target_attribute_name])) <= 1:
-            return np.unique(data[target_attribute_name])[0]
+            if len(data[target_attribute_name]) == 0:
+                return parent_node_class
+            else:
+                return np.unique(data[target_attribute_name])[0]
 
         # If the dataset is empty, return the mode target feature value in the original dataset
         elif len(data) == 0:
@@ -141,54 +146,127 @@ class Tree:
             better_predict = {}
             for value in np.unique(data[best_feature]):
                 value = value
+                # # Split the dataset along the value of the feature with
+                # # the largest information gain and therwith create sub_datasets
+                #
+                # sub_data = data.where(data[best_feature] == value).dropna()
+                #
+                # subtree = self.ID3(sub_data, data, features, target_attribute_name, parent_node_class)
+                #
+                # # Add the sub tree, grown from the sub_dataset to the tree under the root node
+                # tree[best_feature][value] = subtree
 
+                sub_data_min = data.where(data[best_feature] <= value).dropna()
+                sub_data_max = data.where(data[best_feature] > value).dropna()
+
+                min_info_gain = self.info_gain(sub_data_min, best_feature, target_attribute_name)
+                max_info_gain = self.info_gain(sub_data_max, best_feature, target_attribute_name)
+
+                better_predict[value] = {'min': ''}
+                better_predict[value] = {'max': ''}
+
+                better_predict[value]['min'] = min_info_gain
+                better_predict[value]['max'] = max_info_gain
+
+            q_j_t = self.find_better_predict(better_predict)
+            print(best_feature)
+            for key, val in q_j_t.items():
                 # Split the dataset along the value of the feature with
                 # the largest information gain and therwith create sub_datasets
 
-                sub_data = data.where(data[best_feature] == value).dropna()
+                sub_data_left = data.where(data[best_feature] <= key).dropna()
+                sub_data_right = data.where(data[best_feature] > key).dropna()
 
-                subtree = self.ID3(sub_data, data, features, target_attribute_name, parent_node_class)
+                subtree_left = self.ID3(sub_data_left, data, features, target_attribute_name, parent_node_class)
+                subtree_right = self.ID3(sub_data_right, data, features, target_attribute_name, parent_node_class)
+
+                tree[best_feature][key] = {'left': ''}
+                tree[best_feature][key] = {'right': ''}
 
                 # Add the sub tree, grown from the sub_dataset to the tree under the root node
-                tree[best_feature][value] = subtree
+                tree[best_feature][key]['left'] = subtree_left
+                tree[best_feature][key]['right'] = subtree_right
 
             return tree
 
     def find_better_predict(self, better_predicts):
         result = []
-
-        if len(better_predicts) <= 1:
-            return better_predicts
-        if len(better_predicts) == 0:
-            print('Null')
+        for_iter = better_predicts
+        while len(better_predicts) > 1:
+            for value in list(better_predicts):
+                for val in list(for_iter):
+                    print(val)
+                    if better_predicts[value]['max'] > for_iter[val]['max'] and \
+                            better_predicts[value]['min'] > for_iter[val]['min']:
+                        result = np.append(result, value)
+                    elif better_predicts[value]['max'] > for_iter[val]['max'] and \
+                            (better_predicts[value]['min'] + 0.001) > for_iter[val]['min']:
+                        result = np.append(result, value)
+                    else:
+                        if better_predicts[value]['max'] == 0.0 and \
+                                better_predicts[value]['min'] > for_iter[val]['min']:
+                            result = np.append(result, value)
+                        elif better_predicts[value]['min'] == 0.0 and \
+                                better_predicts[value]['max'] > for_iter[val]['max']:
+                            result = np.append(result, value)
+                        else:
+                            for_iter.pop(val)
+                            continue
+            print(for_iter)
             quit()
+            delete = [key for key in better_predicts if key not in np.unique(result)]
 
-        for key, value in better_predicts.items():
-            for key_inner, val in better_predicts.items():
-                if value['max'] > val['max'] and value['min'] > val['min']:
-                    result = np.append(result, key)
-                elif value['max'] > val['max'] and (value['min'] + 0.001) > val['min']:
-                    result = np.append(result, key)
-                else:
-                    continue
-
-        delete = [key for key in better_predicts if key not in np.unique(result)]
-
-        for key in delete:
-            del better_predicts[key]
-
+            for key in delete:
+                del better_predicts[key]
+            print(len(better_predicts))
+        quit('dd')
         return self.find_better_predict(better_predicts)
+
+    def predict(self, query, tree, default=1):
+
+        for key in list(query.keys()):
+            if key in list(tree.keys()):
+
+                try:
+                    result = tree[key][query[key]]
+                except:
+                    return default
+
+                result = tree[key][query[key]]
+
+                if isinstance(result, dict):
+                    return self.predict(query, result)
+                else:
+                    return result
+
+    def test(self, data, tree, target_attribute_name="class"):
+        # Create new query instances by simply removing the target feature column from the original dataset and
+        # convert it to a dictionary
+        queries = data.iloc[:, :-1].to_dict(orient="records")
+
+        # Create a empty DataFrame in whose columns the prediction of the tree are stored
+        predicted = pd.DataFrame(columns=["predicted"])
+
+        # Calculate the prediction accuracy
+        for i in range(len(data)):
+            predicted.loc[i, "predicted"] = self.predict(queries[i], tree, 1.0)
+
+        print('The prediction accuracy is: ', (np.sum(predicted["predicted"].values == data[target_attribute_name].values) /
+                                               len(data)) * 100, '%')
 
 
 if __name__ == '__main__':
     tree_class = Tree()
     data = tree_class.dataset
-    tree = tree_class.ID3(data=data, originaldata=data, features=data.columns[:-1], target_attribute_name='y')
+    #train, test = train_test_split(data[0:25], test_size=0.2)
+    tree = tree_class.ID3(data=data[0:25], originaldata=data[0:25], features=data.columns[:-1], target_attribute_name='y')
     print(tree)
-    # max_ig = []
-    # for col in list(data.columns.values):
-    #     if col != 'y':
-    #         info_gain = tree_class.info_gain(data, col, 'y')
-    #         max_ig = np.append(max_ig, info_gain)
-    #         print(str(info_gain) + ' info gain for ' + col)
-    # print('%s max value' % (max_ig.max()))
+    #tree_class.test(data=test, tree=tree, target_attribute_name='y')
+
+    # train_features = train.drop('y', 1)
+    # train_targets = train['y']
+    # tree_in_sklearn = DecisionTreeClassifier(criterion='entropy').fit(train_features, train_targets)
+    #
+    # test_features = test.drop('y', 1)
+    # prediction = tree_in_sklearn.predict(test_features)
+    # print("The prediction accuracy is: ", tree_in_sklearn.score(test_features, test['y']) * 100, "%")
