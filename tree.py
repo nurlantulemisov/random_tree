@@ -169,7 +169,7 @@ class Tree:
                 better_predict[value]['max'] = max_info_gain
 
             q_j_t = self.find_better_predict(better_predict)
-            print(best_feature)
+
             for key, val in q_j_t.items():
                 # Split the dataset along the value of the feature with
                 # the largest information gain and therwith create sub_datasets
@@ -191,35 +191,25 @@ class Tree:
 
     def find_better_predict(self, better_predicts):
         result = []
-        for_iter = better_predicts
-        while len(better_predicts) > 1:
+        for_iter = better_predicts.copy()
+        while len(for_iter) > 1:
             for value in list(better_predicts):
                 for val in list(for_iter):
-                    print(val)
-                    if better_predicts[value]['max'] > for_iter[val]['max'] and \
-                            better_predicts[value]['min'] > for_iter[val]['min']:
-                        result = np.append(result, value)
-                    elif better_predicts[value]['max'] > for_iter[val]['max'] and \
-                            (better_predicts[value]['min'] + 0.001) > for_iter[val]['min']:
+                    if (better_predicts[value]['max'] > for_iter[val]['max'] and
+                            better_predicts[value]['min'] > for_iter[val]['min']) or (
+                            better_predicts[value]['max'] > for_iter[val]['max'] and
+                            (better_predicts[value]['min'] + 0.001) > for_iter[val]['min']):
                         result = np.append(result, value)
                     else:
-                        if better_predicts[value]['max'] == 0.0 and \
-                                better_predicts[value]['min'] > for_iter[val]['min']:
-                            result = np.append(result, value)
-                        elif better_predicts[value]['min'] == 0.0 and \
-                                better_predicts[value]['max'] > for_iter[val]['max']:
+                        if (better_predicts[value]['max'] == 0.0 and
+                                better_predicts[value]['min'] > for_iter[val]['min']) or (
+                                better_predicts[value]['min'] == 0.0 and
+                                better_predicts[value]['max'] > for_iter[val]['max']):
                             result = np.append(result, value)
                         else:
                             for_iter.pop(val)
                             continue
-            print(for_iter)
-            quit()
-            delete = [key for key in better_predicts if key not in np.unique(result)]
-
-            for key in delete:
-                del better_predicts[key]
-            print(len(better_predicts))
-        quit('dd')
+        quit()
         return self.find_better_predict(better_predicts)
 
     def predict(self, query, tree, default=1):
@@ -251,18 +241,20 @@ class Tree:
         for i in range(len(data)):
             predicted.loc[i, "predicted"] = self.predict(queries[i], tree, 1.0)
 
-        print('The prediction accuracy is: ', (np.sum(predicted["predicted"].values == data[target_attribute_name].values) /
-                                               len(data)) * 100, '%')
+        print('The prediction accuracy is: ',
+              (np.sum(predicted["predicted"].values == data[target_attribute_name].values) /
+               len(data)) * 100, '%')
 
 
 if __name__ == '__main__':
     tree_class = Tree()
     data = tree_class.dataset
-    #train, test = train_test_split(data[0:25], test_size=0.2)
-    tree = tree_class.ID3(data=data[0:25], originaldata=data[0:25], features=data.columns[:-1], target_attribute_name='y')
+    # train, test = train_test_split(data[0:25], test_size=0.2)
+    tree = tree_class.ID3(data=data[0:25], originaldata=data[0:25], features=data.columns[:-1],
+                          target_attribute_name='y')
     print(tree)
-    #tree_class.test(data=test, tree=tree, target_attribute_name='y')
-
+    # tree_class.test(data=test, tree=tree, target_attribute_name='y')
+    # tree_class.info_gain(data, 'age', 'y')
     # train_features = train.drop('y', 1)
     # train_targets = train['y']
     # tree_in_sklearn = DecisionTreeClassifier(criterion='entropy').fit(train_features, train_targets)
